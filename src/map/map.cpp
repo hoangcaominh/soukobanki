@@ -1,8 +1,5 @@
 #include "map.h"
-#include <SDL3/SDL.h>
-#include <fstream>
-#include <string>
-#include <iostream>
+#include <cstdio>
 #include <format>
 #include <exception>
 
@@ -14,79 +11,81 @@ Map::~Map() {
     // delete[] config.box_locations;
 }
 
-Map::Config Map::get_cfg() const noexcept {
+MapConfig Map::get_cfg() const noexcept {
     return cfg;
 }
 
-Map* Map::load(const char* map_name)
+Map* Map::load(const char* map_path)
 {
     Map* map = new Map();
-    Map::Config &cfg = map->cfg;
+    MapConfig &cfg = map->cfg;
     MapTile* &data = map->data;
 
-    std::string map_path = std::string("data/maps/") + map_name;
-    std::ifstream file;
+    FILE* file;
 
     try {
-        file = std::ifstream(map_path);
+        if ((file = fopen(map_path, "r")) == nullptr)
+            throw std::runtime_error(std::format("Failed to open map {}", map_path));
 
-        if (!file.is_open())
-            throw std::runtime_error(std::format("Failed to open map {}", map_path.c_str()));
-
-        file >> cfg.width >> cfg.height;
+        fscanf(file, "%d %d", &cfg.width, &cfg.height);
         if (cfg.width <= 0 || cfg.height <= 0)
-            throw std::out_of_range(std::format("Failed to load map {}: invalid map size", map_path.c_str()));
+            throw std::out_of_range(std::format("Failed to load map {}: invalid map size", map_path));
         else if (cfg.width > MAP_MAX_WIDTH || cfg.height > MAP_MAX_HEIGHT)
-            throw std::out_of_range(std::format("Failed to load map {}: dimension too big", map_path.c_str()));
+            throw std::out_of_range(std::format("Failed to load map {}: dimension too big", map_path));
 
         cfg.map_size = cfg.width * cfg.height;
         data = new MapTile[cfg.map_size];
+
+        int pos;
+        fscanf(file, "%d", &pos);
+        if (!map->oor_check(pos))
+            throw std::out_of_range(std::format("Failed to load map {}: invalid map position", map_path));
+        map->get_tile(pos) += MTType::PLAYER;
+        cfg.player_position = pos;
         
-        int count, pos;
-        file >> count;
+        int count;
+        fscanf(file, "%d", &count);
         while (count--) {
-            file >> pos;
+            fscanf(file, "%d", &pos);
             if (!map->oor_check(pos))
-                throw std::out_of_range(std::format("Failed to load map {}: invalid map position", map_path.c_str()));
-            map->get_tile(pos) += MTType::WALL;
+                throw std::out_of_range(std::format("Failed to load map {}: invalid map position", map_path));
+            map->get_tile(pos) += MTType::WORLD;
         }
 
-        file >> count;
+        fscanf(file, "%d", &count);
         while (count--) {
-            file >> pos;
+            fscanf(file, "%d", &pos);
             if (!map->oor_check(pos))
-                throw std::out_of_range(std::format("Failed to load map {}: invalid map position", map_path.c_str()));
-            map->get_tile(pos) += MTType::FLOOR;
+                throw std::out_of_range(std::format("Failed to load map {}: invalid map position", map_path));
+            map->get_tile(pos) += MTType::WORLD;
+            map->get_tile(pos) += MTType::REACHABLE;
         }
 
-        file >> cfg.objective_count;
+        fscanf(file, "%d", &cfg.objective_count);
         cfg.objective_remaining = cfg.objective_count;
         for (int i = 0; i < cfg.objective_count; ++i) {
-            file >> pos;
+            fscanf(file, "%d", &pos);
             if (!map->oor_check(pos))
-                throw std::out_of_range(std::format("Failed to load map {}: invalid map position", map_path.c_str()));
+                throw std::out_of_range(std::format("Failed to load map {}: invalid map position", map_path));
             map->get_tile(pos) += MTType::OBJECTIVE;
         }
         for (int i = 0; i < cfg.objective_count; ++i) {
-            file >> pos;
+            fscanf(file, "%d", &pos);
             if (!map->oor_check(pos))
-                throw std::out_of_range(std::format("Failed to load map {}: invalid map positionn", map_path.c_str()));
+                throw std::out_of_range(std::format("Failed to load map {}: invalid map positionn", map_path));
             map->get_tile(pos) += MTType::BOX;
             if (map->get_tile(pos).has(MTType::OBJECTIVE))
                 cfg.objective_remaining--;
         }
-
-        file >> pos;
-        if (!map->oor_check(pos))
-            throw std::out_of_range(std::format("Failed to load map {}: invalid map position", map_path.c_str()));
-        map->get_tile(pos) += MTType::PLAYER;
-        cfg.player_position = pos;
     } catch (std::exception& e) {
-        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "%s\n", e.what());
-        delete[] data;
-        data = nullptr;
+        fprintf(stderr, "%s\n", e.what());
         delete map;
         map = nullptr;
+    }
+
+    if (file) {
+        fclose(file);
+        file = nullptr;
     }
 
     return map;

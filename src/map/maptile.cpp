@@ -6,28 +6,28 @@ TileData MapTile::val() const noexcept {
     return data;
 }
 
-bool MapTile::has(const Type &type) const noexcept {
+bool MapTile::has(MTType type) const noexcept {
     return data & type;
 }
 
-void MapTile::set(const Type &type) noexcept {
+void MapTile::set(MTType type) noexcept {
     data = type;
 }
 
-void MapTile::append(const Type &type) noexcept {
+void MapTile::append(MTType type) noexcept {
     data |= type;
 }
 
-void MapTile::remove(const Type &type) noexcept {
+void MapTile::remove(MTType type) noexcept {
     data &= ~type;
 }
 
-MapTile& MapTile::operator+=(const Type &type) noexcept {
+MapTile& MapTile::operator+=(MTType type) noexcept {
     append(type);
     return *this;
 }
 
-MapTile& MapTile::operator-=(const Type &type) noexcept {
+MapTile& MapTile::operator-=(MTType type) noexcept {
     remove(type);
     return *this;
 }

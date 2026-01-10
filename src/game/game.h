@@ -1,7 +1,9 @@
 #pragma once
 #include "../map/map.h"
-#include "../graphics/graphics.h"
 #include <SDL3/SDL.h>
+#include <list>
+
+#define MAX_MOVES 100
 
 class Game {
 public:
@@ -12,22 +14,21 @@ public:
         DOWN
     };
 
-    Game(Graphics* graphics) noexcept;
+    Game() noexcept;
     ~Game();
 
-    SDL_AppResult handle_event(SDL_Event* event);
-    SDL_AppResult handle_loop();
-    Graphics* get_graphics() const noexcept;
+    void handle_event(SDL_Event* event);
+    Map* get_map_ptr() const noexcept;
     // Load map from file
-    void load_map(const char* map_name);
+    void load_map(const char* map_path);
     // Unload current map
     void unload_map();
-    bool map_completed() const noexcept;
-    void move_player(const EMove &move);
+    bool map_complete() const noexcept;
+    void move_player(EMove move);
 private:
     Map* map;
-    Graphics* graphics;
+    std::list<EMove> move_order;
 
-    int move_pos(const MTType &obj, int pos, const EMove &move);
-    void update_maptile(const MTType &obj, int curr_pos, int new_pos);
+    int move_pos(MTType type, int pos, EMove move);
+    void update_maptile(MTType type, int curr_pos, int new_pos);
 };

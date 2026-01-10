@@ -1,42 +1,82 @@
 #include "graphics.h"
-#include <SDL3/SDL.h>
-#include <format>
-#include <exception>
 
-SDL_Texture* load_texture(SDL_Renderer* renderer, const char* path) {
+SDL_Texture* create_texture_from_image(SDL_Renderer* renderer, const char* path) {
 	SDL_Texture* texture = nullptr;
 	SDL_Surface* surface = nullptr;
 
 	if ((surface = SDL_LoadBMP(path)) == nullptr) {
 		SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to load image %s: %s\n", path, SDL_GetError());
-	} else {
-		// Create texture from surface pixels
-		if ((texture = SDL_CreateTextureFromSurface(renderer, surface)) == nullptr) {
-			SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed create texture from %s: %s\n", path, SDL_GetError());
-		}
-
-		// Get rid of old loaded surface
-		SDL_DestroySurface(surface);
+		return nullptr;
 	}
+
+	if ((texture = SDL_CreateTextureFromSurface(renderer, surface)) == nullptr) {
+		SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed create texture from %s: %s\n", path, SDL_GetError());
+	}
+	SDL_DestroySurface(surface);
 
 	return texture;
 }
 
-Graphics::Graphics(SDL_Renderer* renderer) : renderer(renderer), texture(nullptr), tile_src({}), scale(1.0) {
-	SDL_GetCurrentRenderOutputSize(renderer, &width, &height);
+SDL_Texture* create_texture_from_text(SDL_Renderer* renderer, TTF_Font* font, const char* text, SDL_Color color) {
+	SDL_Texture* texture = nullptr;
+	SDL_Surface* surface = nullptr;
+
+	if ((surface = TTF_RenderText_Blended(font, text, 0, color)) == nullptr) {
+		SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to render text surface: %s\n", SDL_GetError());
+		return nullptr;
+	}
+
+	if ((texture = SDL_CreateTextureFromSurface(renderer, surface)) == nullptr) {
+		SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed create texture from rendered text: %s\n", SDL_GetError());
+	}
+	SDL_DestroySurface(surface);
+
+	return texture;
 }
 
+Graphics::Graphics() : renderer(nullptr), texture(nullptr), screen_map_complete(nullptr), tile_src({}), scale(1.0) {}
+
 Graphics::~Graphics() {
+	TTF_CloseFont(font);
+	font = nullptr;
+	TTF_DestroyRendererTextEngine(text_engine);
+	text_engine = nullptr;
 	SDL_DestroyTexture(texture);
 	texture = nullptr;
 	SDL_DestroyRenderer(renderer);
 	renderer = nullptr;
 }
 
+bool Graphics::set_renderer(SDL_Renderer* renderer) {
+	this->renderer = renderer;
+
+	if (!SDL_GetCurrentRenderOutputSize(renderer, &width, &height)) {
+		SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to get renderer dimension: %s\n", SDL_GetError());
+	}
+
+    if (!load_texture_from_file("data/images/texture.bmp")) {
+		return false;
+    }
+
+	if ((screen_map_complete = create_texture_from_image(renderer, "data/images/map_complete.bmp")) == nullptr) {
+		return false;
+	}
+	SDL_SetTextureScaleMode(screen_map_complete, SDL_ScaleMode::SDL_SCALEMODE_PIXELART);
+
+    if (!load_font_from_file("data/fonts/benguiat_r.ttf")) {
+		return false;
+    }
+
+	if ((text_engine = TTF_CreateRendererTextEngine(renderer)) == nullptr) {
+		SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create text engine from renderer: %s\n", SDL_GetError());
+	}
+
+	return true;
+}
+
 bool Graphics::load_texture_from_file(const char* path) {
-    SDL_Texture* texture;
-    if ((texture = load_texture(renderer, path)) == nullptr) {
-        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to load texture at %s\n", path);
+    SDL_Texture* texture = nullptr;
+    if ((texture = create_texture_from_image(renderer, path)) == nullptr) {
         return false;
     }
 
@@ -55,7 +95,21 @@ bool Graphics::load_texture_from_file(const char* path) {
 	return true;
 }
 
-SDL_FRect Graphics::get_tile_src(const TileType &type) noexcept {
+bool Graphics::load_font_from_file(const char* path) {
+    TTF_Font* font = nullptr;
+    if ((font = TTF_OpenFont(path, 12)) == nullptr) {
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to load font %s: %s\n", path, SDL_GetError());
+        return false;
+    }
+
+	// Replace old with new font
+	TTF_CloseFont(this->font);
+	this->font = font;
+
+	return true;
+}
+
+SDL_FRect Graphics::get_tile_src(TileType type) noexcept {
 	return tile_src[type];
 }
 
@@ -64,16 +118,23 @@ float Graphics::get_scale() const noexcept {
 }
 
 void Graphics::set_scale(float val) noexcept {
+	if (val < 0.1 || val > 5)
+		return;
     scale = val;
 }
 
-void Graphics::draw_tile(const TileType &type, SDL_FRect dest) {
+void Graphics::draw_text(const char* text, float x, float y) {
+	TTF_Text* text_obj = TTF_CreateText(text_engine, font, text, 0);
+	TTF_DrawRendererText(text_obj, x, y);
+}
+
+void Graphics::draw_tile(TileType type, SDL_FRect dest) {
 	SDL_FRect src = get_tile_src(type);
 	SDL_RenderTexture(renderer, texture, &src, &dest);
 }
 
 void Graphics::draw_map(const Map* const map) {
-	Map::Config cfg = map->get_cfg();
+	MapConfig cfg = map->get_cfg();
 
 	int offset_x = (width - cfg.width * TILE_LENGTH * scale) / 2;
 	int offset_y = (height - cfg.height * TILE_LENGTH * scale) / 2;
@@ -86,26 +147,43 @@ void Graphics::draw_map(const Map* const map) {
 			dest.x = x * dest.w + offset_x;
 			MapTile tile = map->get_tile(y, x);
 
-			if (tile.has(MTType::WALL))
-				draw_tile(Graphics::TileType::WALL, dest);
-			else if (tile.has(MTType::FLOOR))
-				draw_tile(Graphics::TileType::FLOOR, dest);
+			if (tile.has(MTType::WORLD)) {
+				if (tile.has(MTType::REACHABLE))
+					draw_tile(TileType::FLOOR, dest);
+				else
+					draw_tile(TileType::WALL, dest);
+			}
 
 			if (tile.has(MTType::OBJECTIVE) && tile.has(MTType::BOX))
-				draw_tile(Graphics::TileType::BOX_PLACED, dest);
+				draw_tile(TileType::BOX_PLACED, dest);
 			else if (tile.has(MTType::OBJECTIVE))
-				draw_tile(Graphics::TileType::OBJECTIVE, dest);
+				draw_tile(TileType::OBJECTIVE, dest);
 			else if (tile.has(MTType::BOX))
-				draw_tile(Graphics::TileType::BOX, dest);
+				draw_tile(TileType::BOX, dest);
 
 			if (tile.has(MTType::PLAYER))
-				draw_tile(Graphics::TileType::PLAYER, dest);
+				draw_tile(TileType::PLAYER, dest);
 		}
 	}
 }
 
-void Graphics::render(std::function<void()> func) {
+void Graphics::draw_map_complete() {
+	float w, h, scale = 0.8;
+	SDL_GetTextureSize(screen_map_complete, &w, &h);
+	SDL_FRect dest {0, 0, width * scale, width * scale / w * h };
+	SDL_FPoint center { (float) width / 2, (float) height / 2 };
+	dest.x = center.x - dest.w / 2;
+	// dest.y = center.y - dest.h / 2;
+	SDL_RenderTexture(renderer, screen_map_complete, nullptr, &dest);
+}
+
+void Graphics::render(const Game* const game) {
 	SDL_RenderClear(renderer);
-	func();
+
+	draw_map(game->get_map_ptr());
+	if (game->map_complete()) {
+		draw_map_complete();
+	}
+
 	SDL_RenderPresent(renderer);
 }
