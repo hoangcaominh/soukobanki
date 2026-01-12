@@ -15,7 +15,8 @@ public:
         OBJECTIVE,
         BOX,
         BOX_PLACED,
-        PLAYER
+        PLAYER,
+        CURSOR
     };
 
     Graphics();
@@ -29,7 +30,7 @@ public:
     void set_scale(float val) noexcept;
     void draw_text(const char* text, float x, float y);
     void draw_tile(TileType type, SDL_FRect dest);
-    void draw_map(const Map* const map);
+    void draw_game(const Game* const game);
     void draw_map_complete();
     void render(const Game* const game);
 private:

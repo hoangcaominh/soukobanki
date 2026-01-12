@@ -34,7 +34,8 @@ SDL_Texture* create_texture_from_text(SDL_Renderer* renderer, TTF_Font* font, co
 	return texture;
 }
 
-Graphics::Graphics() : renderer(nullptr), texture(nullptr), screen_map_complete(nullptr), tile_src({}), scale(1.0) {}
+Graphics::Graphics() :
+	renderer(nullptr), texture(nullptr), screen_map_complete(nullptr), tile_src({}), scale(1.0) {}
 
 Graphics::~Graphics() {
 	TTF_CloseFont(font);
@@ -91,6 +92,7 @@ bool Graphics::load_texture_from_file(const char* path) {
 	tile_src[TileType::BOX] = { TILE_LENGTH, TILE_LENGTH * 2, TILE_LENGTH, TILE_LENGTH };
 	tile_src[TileType::BOX_PLACED] = { TILE_LENGTH * 2, TILE_LENGTH * 2, TILE_LENGTH, TILE_LENGTH };
 	tile_src[TileType::PLAYER] = { 0, 0, TILE_LENGTH, TILE_LENGTH };
+	tile_src[TileType::CURSOR] = { 0, TILE_LENGTH * 3, TILE_LENGTH, TILE_LENGTH };
 
 	return true;
 }
@@ -133,7 +135,8 @@ void Graphics::draw_tile(TileType type, SDL_FRect dest) {
 	SDL_RenderTexture(renderer, texture, &src, &dest);
 }
 
-void Graphics::draw_map(const Map* const map) {
+void Graphics::draw_game(const Game* const game) {
+	Map* map = game->get_map_ptr();
 	MapConfig cfg = map->get_cfg();
 
 	int offset_x = (width - cfg.width * TILE_LENGTH * scale) / 2;
@@ -165,6 +168,18 @@ void Graphics::draw_map(const Map* const map) {
 				draw_tile(TileType::PLAYER, dest);
 		}
 	}
+
+	if (game->get_mode() == GameMode::PLAY && game->map_complete()) {
+		draw_map_complete();
+	} else if (game->get_mode() == GameMode::EDIT) {
+		TilePos cursor = game->get_cursor();
+		SDL_Point point = map->tilepos_to_point(cursor);
+		draw_tile(TileType::CURSOR, SDL_FRect { 
+			(float) point.x * dest.w + offset_x,
+			(float) point.y * dest.h + offset_y,
+			TILE_LENGTH * scale, TILE_LENGTH * scale
+		});
+	} 
 }
 
 void Graphics::draw_map_complete() {
@@ -180,10 +195,7 @@ void Graphics::draw_map_complete() {
 void Graphics::render(const Game* const game) {
 	SDL_RenderClear(renderer);
 
-	draw_map(game->get_map_ptr());
-	if (game->map_complete()) {
-		draw_map_complete();
-	}
+	draw_game(game);
 
 	SDL_RenderPresent(renderer);
 }

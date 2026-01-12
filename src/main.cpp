@@ -36,10 +36,23 @@ SDL_AppResult SDL_AppInit(void** state, int argc, char* argv[]) {
     // Set background color to #000000FF
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 
-    game = new Game();
+    GameMode mode = GameMode::PLAY;
+    const char* map_path = "data/maps/demo";
+    if (argc == 3) {
+        if (strcasecmp(argv[1], "e") == 0 || strcasecmp(argv[1], "edit") == 0) {
+            mode = GameMode::EDIT;
+        } else if (strcasecmp(argv[1], "p") == 0 || strcasecmp(argv[1], "play") == 0) {
+            mode = GameMode::PLAY;
+        } else {
+            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Invalid command: %s\n", argv[1]);
+            return SDL_APP_FAILURE;
+        }
+        map_path = argv[2];
+    }
+
+    game = new Game(mode);
     if (game == nullptr) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to initialize game\n");
-        delete graphics;
         return SDL_APP_FAILURE;
     }
 
@@ -49,7 +62,7 @@ SDL_AppResult SDL_AppInit(void** state, int argc, char* argv[]) {
         return SDL_APP_FAILURE;
     }
 
-    game->load_map("demo");
+    game->load_map(map_path);
 
     return SDL_APP_CONTINUE;
 }

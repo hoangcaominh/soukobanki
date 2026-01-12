@@ -36,18 +36,18 @@ Map* Map::load(const char* map_path)
         cfg.map_size = cfg.width * cfg.height;
         data = new MapTile[cfg.map_size];
 
-        int pos;
+        TilePos pos;
         fscanf(file, "%d", &pos);
-        if (!map->oor_check(pos))
+        if (!map->oob_check(pos))
             throw std::out_of_range(std::format("Failed to load map {}: invalid map position", map_path));
         map->get_tile(pos) += MTType::PLAYER;
-        cfg.player_position = pos;
+        cfg.player_pos = pos;
         
         int count;
         fscanf(file, "%d", &count);
         while (count--) {
             fscanf(file, "%d", &pos);
-            if (!map->oor_check(pos))
+            if (!map->oob_check(pos))
                 throw std::out_of_range(std::format("Failed to load map {}: invalid map position", map_path));
             map->get_tile(pos) += MTType::WORLD;
         }
@@ -55,7 +55,7 @@ Map* Map::load(const char* map_path)
         fscanf(file, "%d", &count);
         while (count--) {
             fscanf(file, "%d", &pos);
-            if (!map->oor_check(pos))
+            if (!map->oob_check(pos))
                 throw std::out_of_range(std::format("Failed to load map {}: invalid map position", map_path));
             map->get_tile(pos) += MTType::WORLD;
             map->get_tile(pos) += MTType::REACHABLE;
@@ -65,13 +65,13 @@ Map* Map::load(const char* map_path)
         cfg.objective_remaining = cfg.objective_count;
         for (int i = 0; i < cfg.objective_count; ++i) {
             fscanf(file, "%d", &pos);
-            if (!map->oor_check(pos))
+            if (!map->oob_check(pos))
                 throw std::out_of_range(std::format("Failed to load map {}: invalid map position", map_path));
             map->get_tile(pos) += MTType::OBJECTIVE;
         }
         for (int i = 0; i < cfg.objective_count; ++i) {
             fscanf(file, "%d", &pos);
-            if (!map->oor_check(pos))
+            if (!map->oob_check(pos))
                 throw std::out_of_range(std::format("Failed to load map {}: invalid map positionn", map_path));
             map->get_tile(pos) += MTType::BOX;
             if (map->get_tile(pos).has(MTType::OBJECTIVE))
@@ -91,19 +91,27 @@ Map* Map::load(const char* map_path)
     return map;
 }
 
-MapTile& Map::get_tile(int pos) const {
-    if (!oor_check(pos))
+MapTile& Map::get_tile(TilePos pos) const {
+    if (!oob_check(pos))
         throw std::out_of_range(std::format("Position ({}) is outside of map", pos));
     return data[pos];
 }
 
 MapTile& Map::get_tile(int y, int x) const {
-    int pos = y * cfg.width + x;
-    if (!oor_check(pos))
+    TilePos pos = point_to_tilepos(y, x);
+    if (!oob_check(pos))
         throw std::out_of_range(std::format("Position ({}, {}) is outside of map", y, x));
     return data[pos];
 }
 
-bool Map::oor_check(int pos) const noexcept {
+bool Map::oob_check(TilePos pos) const noexcept {
     return pos >= 0 && pos < cfg.map_size;
+}
+
+TilePos Map::point_to_tilepos(int y, int x) const noexcept {
+    return y * cfg.width + x;
+}
+
+SDL_Point Map::tilepos_to_point(TilePos pos) const noexcept {
+    return SDL_Point { pos % cfg.width, pos / cfg.width };
 }

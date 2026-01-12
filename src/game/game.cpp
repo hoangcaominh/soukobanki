@@ -1,6 +1,7 @@
 #include "game.h"
 
-Game::Game() noexcept : map(nullptr), move_order(std::list<EMove>()) {}
+Game::Game(GameMode mode) noexcept :
+    mode(mode), map(nullptr), move_order(std::list<EMove>()), cursor_pos() {}
 
 Game::~Game() {
     unload_map();
@@ -8,7 +9,7 @@ Game::~Game() {
 
 void Game::handle_event(SDL_Event* event) {
     if (event->type == SDL_EVENT_KEY_DOWN) {
-        if (!map_complete()) {
+        if (mode == GameMode::PLAY && !map_complete()) {
             if (event->key.key == SDLK_Z && SDL_GetModState() & SDL_KMOD_CTRL) {
                 // TODO: Implement undo functionality
             } else if (event->key.key == SDLK_LEFT) {
@@ -19,6 +20,16 @@ void Game::handle_event(SDL_Event* event) {
                 move_player(Game::EMove::UP);
             } else if (event->key.key == SDLK_DOWN) {
                 move_player(Game::EMove::DOWN);
+            }
+        } else if (mode == GameMode::EDIT) {
+            if (event->key.key == SDLK_LEFT) {
+                move_cursor(Game::EMove::LEFT);
+            } else if (event->key.key == SDLK_RIGHT) {
+                move_cursor(Game::EMove::RIGHT);
+            } else if (event->key.key == SDLK_UP) {
+                move_cursor(Game::EMove::UP);
+            } else if (event->key.key == SDLK_DOWN) {
+                move_cursor(Game::EMove::DOWN);
             }
         }
     }
@@ -38,18 +49,40 @@ void Game::unload_map() {
     map = nullptr;
 }
 
+GameMode Game::get_mode() const noexcept {
+    return mode;
+}
+
 bool Game::map_complete() const noexcept {
     return map->cfg.objective_remaining == 0;
 }
 
+TilePos Game::get_cursor() const noexcept {
+    return cursor_pos;
+}
+
 void Game::move_player(EMove move) {
-    int &pos = map->cfg.player_position;
+    TilePos &pos = map->cfg.player_pos;
     pos = move_pos(MTType::PLAYER, pos, move);
 }
 
-int Game::move_pos(MTType type, int pos, EMove move) {
+void Game::move_cursor(EMove move) {
     MapConfig &cfg = map->cfg;
-    int new_pos = pos;
+    TilePos &pos = cursor_pos;
+
+    if (move == EMove::LEFT && pos % cfg.width != 0)
+        pos -= 1;
+    else if (move == EMove::RIGHT && (pos + 1) % cfg.width != 0)
+        pos += 1;
+    else if (move == EMove::UP && pos - cfg.width >= 0)
+        pos -= cfg.width;
+    else if (move == EMove::DOWN && pos + cfg.width < cfg.map_size)
+        pos += cfg.width;
+}
+
+TilePos Game::move_pos(MTType type, TilePos pos, EMove move) {
+    MapConfig &cfg = map->cfg;
+    TilePos new_pos = pos;
 
     if (move == EMove::LEFT) {
         new_pos = pos - 1;
@@ -113,7 +146,7 @@ int Game::move_pos(MTType type, int pos, EMove move) {
     return new_pos;
 }
 
-void Game::update_maptile(MTType type, int curr_pos, int new_pos) {
+void Game::update_maptile(MTType type, TilePos curr_pos, TilePos new_pos) {
     if (
         type == MTType::BOX &&
         map->get_tile(curr_pos).has(MTType::OBJECTIVE) &&

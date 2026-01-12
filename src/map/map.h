@@ -1,9 +1,12 @@
 #pragma once
 #include "maptile.h"
+#include <SDL3/SDL.h>
 #include <cstdint>
 
 #define MAP_MAX_WIDTH 256
 #define MAP_MAX_HEIGHT 256
+
+typedef int TilePos;
 
 struct MapConfig {
     int width, height;
@@ -11,7 +14,7 @@ struct MapConfig {
     int objective_count;
     int objective_remaining;
     // int* box_positions;
-    int player_position;
+    TilePos player_pos;
 };
 
 class Map {
@@ -22,12 +25,13 @@ public:
     MapConfig get_cfg() const noexcept;
     // Allow creating map instances by loading from files only
     static Map* load(const char* map_path);
-    MapTile& get_tile(int pos) const;
+    MapTile& get_tile(TilePos pos) const;
     MapTile& get_tile(int y, int x) const;
+    bool oob_check(TilePos pos) const noexcept;
+    TilePos point_to_tilepos(int y, int x) const noexcept;
+    SDL_Point tilepos_to_point(TilePos pos) const noexcept;
 private:
     Map() noexcept;
     MapTile* data;
     MapConfig cfg;
-
-    bool oor_check(int pos) const noexcept;
 };
