@@ -9,12 +9,13 @@
 typedef int TilePos;
 
 struct MapConfig {
+    const char* map_path;
     int width, height;
     uint32_t map_size;
+    TilePos player_pos;
     int objective_count;
     int objective_remaining;
     // int* box_positions;
-    TilePos player_pos;
 };
 
 class Map {
@@ -25,6 +26,7 @@ public:
     MapConfig get_cfg() const noexcept;
     // Allow creating map instances by loading from files only
     static Map* load(const char* map_path);
+    bool save(const char* path) const;
     MapTile& get_tile(TilePos pos) const;
     MapTile& get_tile(int y, int x) const;
     bool oob_check(TilePos pos) const noexcept;

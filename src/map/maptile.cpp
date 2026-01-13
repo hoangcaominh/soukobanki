@@ -1,13 +1,18 @@
 #include "maptile.h"
 
-MapTile::MapTile() noexcept : data(0) {}
+MapTile::MapTile() noexcept : data(MTType::BLANK) {}
+MapTile::MapTile(TileData data) noexcept : data(data) {}
 
 TileData MapTile::val() const noexcept {
     return data;
 }
 
+void MapTile::set_val(TileData data) noexcept {
+    this->data = data;
+}
+
 bool MapTile::has(MTType type) const noexcept {
-    return data & type;
+    return (data & type) == type;
 }
 
 void MapTile::set(MTType type) noexcept {
@@ -30,4 +35,8 @@ MapTile& MapTile::operator+=(MTType type) noexcept {
 MapTile& MapTile::operator-=(MTType type) noexcept {
     remove(type);
     return *this;
+}
+
+bool MapTile::operator==(const MapTile& rhs) const noexcept {
+    return data == rhs.data;
 }

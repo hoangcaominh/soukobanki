@@ -1,5 +1,7 @@
 #include "map.h"
 #include <cstdio>
+#include <unistd.h>
+#include <vector>
 #include <format>
 #include <exception>
 
@@ -21,11 +23,12 @@ Map* Map::load(const char* map_path)
     MapConfig &cfg = map->cfg;
     MapTile* &data = map->data;
 
-    FILE* file;
+    FILE* file = nullptr;
 
     try {
         if ((file = fopen(map_path, "r")) == nullptr)
             throw std::runtime_error(std::format("Failed to open map {}", map_path));
+        cfg.map_path = map_path;
 
         fscanf(file, "%d %d", &cfg.width, &cfg.height);
         if (cfg.width <= 0 || cfg.height <= 0)
@@ -89,6 +92,68 @@ Map* Map::load(const char* map_path)
     }
 
     return map;
+}
+
+bool Map::save(const char* path) const {
+    // TODO: Make this operation fail-safe
+    std::string t = std::format("{}.tmp", path);
+    const char* tmp_path = t.c_str();
+    FILE* file = nullptr;
+    bool success = false;
+    std::vector<TilePos> walls, floors, objectives, boxes;
+
+    for (TilePos i = 0; i < cfg.map_size; ++i) {
+        MapTile tile = get_tile(i);
+        if (tile.has(MTType::WORLD)) {
+            if (tile.has(MTType::REACHABLE))
+                floors.push_back(i);
+            else
+                walls.push_back(i);
+        }
+        if (tile.has(MTType::OBJECTIVE))
+            objectives.push_back(i);
+        if (tile.has(MTType::BOX))
+            boxes.push_back(i);
+    }
+
+    try {
+        if (objectives.size() != boxes.size())
+            throw std::runtime_error(std::format("Number of objectives and boxes are different: {} != {}", objectives.size(), boxes.size()));   
+ 
+        if ((file = fopen(tmp_path, "w")) == nullptr)
+            throw std::runtime_error(std::format("Failed to open map {}", tmp_path));
+
+        fprintf(file, "%d %d\n", cfg.width, cfg.height);
+        fprintf(file, "%d\n", cfg.player_pos);
+        fprintf(file, "%lu\n", walls.size());
+        for (const TilePos& i: walls)
+            fprintf(file, "%d ", i);
+        fprintf(file, "\n%lu\n", floors.size());
+        for (const TilePos& i: floors)
+            fprintf(file, "%d ", i);
+        fprintf(file, "\n%lu\n", objectives.size());
+        for (const TilePos& i: objectives)
+            fprintf(file, "%d ", i);
+        fprintf(file, "\n");
+        for (const TilePos& i: boxes)
+            fprintf(file, "%d ", i);
+
+        fclose(file);
+        file = nullptr;
+
+        rename(tmp_path, path);
+        unlink(tmp_path);
+        success = true;
+    } catch (std::exception& e) {
+        fprintf(stderr, "%s\n", e.what());
+    }
+
+    if (file) {
+        fclose(file);
+        file = nullptr;
+    }
+
+    return success;
 }
 
 MapTile& Map::get_tile(TilePos pos) const {

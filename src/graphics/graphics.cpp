@@ -135,6 +135,25 @@ void Graphics::draw_tile(TileType type, SDL_FRect dest) {
 	SDL_RenderTexture(renderer, texture, &src, &dest);
 }
 
+void Graphics::draw_tile(MapTile tile, SDL_FRect dest) {
+	if (tile.has(MTType::WORLD)) {
+		if (tile.has(MTType::REACHABLE))
+			draw_tile(TileType::FLOOR, dest);
+		else
+			draw_tile(TileType::WALL, dest);
+	}
+
+	if (tile.has(MTType::OBJECTIVE) && tile.has(MTType::BOX))
+		draw_tile(TileType::BOX_PLACED, dest);
+	else if (tile.has(MTType::OBJECTIVE))
+		draw_tile(TileType::OBJECTIVE, dest);
+	else if (tile.has(MTType::BOX))
+		draw_tile(TileType::BOX, dest);
+
+	if (tile.has(MTType::PLAYER))
+		draw_tile(TileType::PLAYER, dest);
+}
+
 void Graphics::draw_game(const Game* const game) {
 	Map* map = game->get_map_ptr();
 	MapConfig cfg = map->get_cfg();
@@ -148,30 +167,18 @@ void Graphics::draw_game(const Game* const game) {
 
 		for (int x = 0; x < cfg.width; ++x) {
 			dest.x = x * dest.w + offset_x;
-			MapTile tile = map->get_tile(y, x);
 
-			if (tile.has(MTType::WORLD)) {
-				if (tile.has(MTType::REACHABLE))
-					draw_tile(TileType::FLOOR, dest);
-				else
-					draw_tile(TileType::WALL, dest);
-			}
-
-			if (tile.has(MTType::OBJECTIVE) && tile.has(MTType::BOX))
-				draw_tile(TileType::BOX_PLACED, dest);
-			else if (tile.has(MTType::OBJECTIVE))
-				draw_tile(TileType::OBJECTIVE, dest);
-			else if (tile.has(MTType::BOX))
-				draw_tile(TileType::BOX, dest);
-
-			if (tile.has(MTType::PLAYER))
-				draw_tile(TileType::PLAYER, dest);
+			draw_tile(map->get_tile(y, x), dest);
 		}
 	}
 
 	if (game->get_mode() == GameMode::PLAY && game->map_complete()) {
 		draw_map_complete();
 	} else if (game->get_mode() == GameMode::EDIT) {
+		MapTile tile_brush = game->get_tile_brush();
+		SDL_FRect dest {0, 0, TILE_LENGTH, TILE_LENGTH };
+		draw_tile(tile_brush, dest);
+
 		TilePos cursor = game->get_cursor();
 		SDL_Point point = map->tilepos_to_point(cursor);
 		draw_tile(TileType::CURSOR, SDL_FRect { 
