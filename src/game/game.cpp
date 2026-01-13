@@ -31,6 +31,7 @@ void Game::handle_event(SDL_Event* event) {
             } else if (event->key.key == SDLK_DOWN) {
                 move_cursor(Game::EMove::DOWN);
             } else if (event->key.key == SDLK_S) {
+                SDL_Log("Saving map to %s...", map->cfg.map_path);
                 // Save map
                 if (map->save(map->cfg.map_path))
                     SDL_Log("Map saved to %s", map->cfg.map_path);
@@ -82,12 +83,16 @@ Map* Game::get_map_ptr() const noexcept {
 
 void Game::load_map(const char* map_path) {
     unload_map();
+    SDL_Log("Loading map %s...", map_path);
     map = Map::load(map_path);
 }
 
 void Game::unload_map() {
-    delete map;
-    map = nullptr;
+    if (map) {
+        SDL_Log("Unloading map %s...", map->cfg.map_path);
+        delete map;
+        map = nullptr;
+    }
 }
 
 GameMode Game::get_mode() const noexcept {

@@ -12,21 +12,25 @@ Graphics* graphics;
 SDL_AppResult SDL_AppInit(void** state, int argc, char* argv[]) {
     SDL_SetAppMetadata("Soukobanki", "0.1.0", "");
 
+    SDL_Log("Initializing SDL...");
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to intialize SDL: %s\n", SDL_GetError());
         return SDL_APP_FAILURE;
     }
 
+    SDL_Log("Initializing SDL_ttf...");
     if (!TTF_Init()) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to intialize SDL_ttf: %s\n", SDL_GetError());
         return SDL_APP_FAILURE;
     }
 
+    SDL_Log("Creating window...");
     if ((window = SDL_CreateWindow("Soukobanki", 1280, 960, SDL_WINDOW_OPENGL /* | SDL_WINDOW_RESIZABLE */ )) == nullptr) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create window: %s\n", SDL_GetError());
         return SDL_APP_FAILURE;
     }
 
+    SDL_Log("Creating renderer...");
     SDL_Renderer* renderer = nullptr;
     if ((renderer = SDL_CreateRenderer(window, "")) == nullptr) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create renderer: %s\n", SDL_GetError());
@@ -39,6 +43,8 @@ SDL_AppResult SDL_AppInit(void** state, int argc, char* argv[]) {
     GameMode mode = GameMode::PLAY;
     const char* map_path = "data/maps/demo";
     if (argc == 3) {
+        SDL_Log("Params \"%s\" \"%s\"", argv[1], argv[2]);
+
         if (strcasecmp(argv[1], "e") == 0 || strcasecmp(argv[1], "edit") == 0) {
             mode = GameMode::EDIT;
         } else if (strcasecmp(argv[1], "p") == 0 || strcasecmp(argv[1], "play") == 0) {
@@ -50,12 +56,14 @@ SDL_AppResult SDL_AppInit(void** state, int argc, char* argv[]) {
         map_path = argv[2];
     }
 
+    SDL_Log("Creating game instance...");
     game = new Game(mode);
     if (game == nullptr) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to initialize game\n");
         return SDL_APP_FAILURE;
     }
 
+    SDL_Log("Creating graphics driver...");
     graphics = new Graphics();
     if (!graphics->set_renderer(renderer)) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to set graphics renderer\n");
