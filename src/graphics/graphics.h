@@ -1,6 +1,6 @@
 #pragma once
-#include "../map/map.h"
-#include "../game/game.h"
+#include "map/map.h"
+#include "game/game.h"
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
 #include <unordered_map>

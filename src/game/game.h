@@ -1,5 +1,5 @@
 #pragma once
-#include "../map/map.h"
+#include "map/map.h"
 #include <SDL3/SDL.h>
 #include <list>
 

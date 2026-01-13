@@ -6,10 +6,11 @@ set(CMAKE_CXX_STANDARD 23)
 
 add_subdirectory(vendor)
 
-file(GLOB SOURCES_H src/*/*.h)
-file(GLOB SOURCES_CPP src/*/*.cpp)
-# add_subdirectory(src)
+file(GLOB SOURCES_H RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} src/*/*.h)
+file(GLOB SOURCES_CPP RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} src/*/*.cpp)
+
 add_executable(${PROJECT_NAME})
+target_include_directories(${PROJECT_NAME} PRIVATE src)
 target_sources(
     ${PROJECT_NAME}
     PRIVATE
