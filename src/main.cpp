@@ -4,13 +4,14 @@
 #include "graphics/graphics.h"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#include <config.h>
 
 SDL_Window* window;
 Game* game;
 Graphics* graphics;
 
 SDL_AppResult SDL_AppInit(void** state, int argc, char* argv[]) {
-    SDL_SetAppMetadata("Soukobanki", "0.1.0", "");
+    SDL_SetAppMetadata("Soukobanki", PROJECT_VERSION, "");
 
     SDL_Log("Initializing SDL...");
     if (!SDL_Init(SDL_INIT_VIDEO)) {

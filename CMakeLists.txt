@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
-project(soukobanki)
+project(soukobanki VERSION 1.2.12)
+configure_file(config.h.in config.h)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 set(CMAKE_CXX_STANDARD 23)
@@ -10,6 +11,7 @@ file(GLOB SOURCES_H RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} src/*/*.h)
 file(GLOB SOURCES_CPP RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} src/*/*.cpp)
 
 add_executable(${PROJECT_NAME})
+target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_BINARY_DIR})
 target_include_directories(${PROJECT_NAME} PRIVATE src)
 target_sources(
     ${PROJECT_NAME}
