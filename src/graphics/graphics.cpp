@@ -176,16 +176,13 @@ void Graphics::draw_game(const Game* const game) {
 		draw_map_complete();
 	} else if (game->get_mode() == GameMode::EDIT) {
 		MapTile tile_brush = game->get_tile_brush();
-		SDL_FRect dest {0, 0, TILE_LENGTH, TILE_LENGTH };
-		draw_tile(tile_brush, dest);
+		draw_tile(tile_brush, SDL_FRect {0, 0, TILE_LENGTH, TILE_LENGTH });
 
 		TilePos cursor = game->get_cursor();
 		SDL_Point point = map->tilepos_to_point(cursor);
-		draw_tile(TileType::CURSOR, SDL_FRect { 
-			(float) point.x * dest.w + offset_x,
-			(float) point.y * dest.h + offset_y,
-			TILE_LENGTH * scale, TILE_LENGTH * scale
-		});
+		dest.x = point.x * dest.w + offset_x;
+		dest.y = point.y * dest.h + offset_y;
+		draw_tile(TileType::CURSOR, dest);
 	} 
 }
 
