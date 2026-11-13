@@ -1,5 +1,5 @@
 # SDL3
-set(SDL_TEST OFF)
+set(SDL_TESTS OFF)
 add_subdirectory(SDL)
 add_subdirectory(SDL_image)
 add_subdirectory(SDL_mixer)
